@@ -1,0 +1,151 @@
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import View.View2;
+import Model.ModelTeacher;
+import javax.swing.table.DefaultTableModel;
+import Model.ConecctionMongoDB;
+import java.util.List;
+import javax.swing.JOptionPane;
+import org.bson.Document;
+
+public class ControllerTeacher implements ActionListener {
+
+    protected View2 view2 = new View2();
+    protected ModelTeacher teacher = new ModelTeacher("", 0, "", "", "");
+    protected ConecctionMongoDB conecction;
+    private boolean isEdit = false;
+
+    public ControllerTeacher(ConecctionMongoDB conecction) {
+        this.conecction = new ConecctionMongoDB();
+
+        this.view2.btnSaveD.addActionListener(this);
+        this.view2.btnUpdateD.addActionListener(this);
+        this.view2.btnDeleteD.addActionListener(this);
+        this.view2.btnSearchD.addActionListener(this);
+        loadDataT();
+    }
+
+    /**
+     * Muestra la vista principal de gestión de docentes.
+     */
+    public void startViewT() {
+        view2.setVisible(true);
+    }
+
+    /**
+     * Carga los datos de los docentes en la tabla desde la base de datos.
+     */
+    public void loadDataT() {
+        DefaultTableModel model = (DefaultTableModel) view2.tblTeacher.getModel();
+        model.setRowCount(0);
+
+        conecction.setNameCollection("Docentes");
+        List<Document> document = conecction.getAllDocuments();
+
+        if (document != null && !document.isEmpty()) {
+            for (Document doc : document) {
+                model.addRow(new Object[]{
+                    doc.getString("Nombre"),
+                    doc.getString("Apellido"),
+                    doc.getString("Cedula"),
+                    doc.getString("Formato"),
+                    doc.getInteger("Horas", 0),
+                    doc.getString("Pago Total")
+                });
+            }
+        } else {
+            JOptionPane.showMessageDialog(view2, "No hay datos disponibles");
+        }
+    }
+
+    /**
+     * Guarda un nuevo docente en la base de datos o actualiza uno existente.
+     */
+    public void saveDataT() {
+        teacher.setName(view2.txtNameT.getText().trim());
+        teacher.setLastname(view2.txtLastnameT.getText().trim());
+        teacher.setDni(view2.txtDniT.getText().trim());
+        teacher.setHours((int) view2.spnHours.getValue());
+
+        Document document = new Document("Nombre", teacher.getName())
+                .append("Apellido", teacher.getLastname())
+                .append("Cedula", teacher.getDni())
+                .append("Horas", teacher.getHours())
+                .append("Formato", teacher.getFormat())
+                .append("Pago Total", teacher.getCalculatePayment());
+
+        conecction.setNameCollection("Docentes");
+
+        if (isEdit) {
+            conecction.updateDocument(new Document("Cedula", teacher.getDni()), document);
+            JOptionPane.showMessageDialog(view2, "Docente actualizado con éxito");
+            isEdit = false;
+        } else {
+            conecction.createDocument(document);
+            JOptionPane.showMessageDialog(view2, "Docente guardado con éxito");
+        }
+        loadDataT();
+    }
+
+    /**
+     * Elimina un docente seleccionado de la base de datos.
+     */
+    public void deleteDataT() {
+        int selectedRow = view2.tblTeacher.getSelectedRow();
+        if (selectedRow < 0) {
+            JOptionPane.showMessageDialog(null, "Debe seleccionar una fila para eliminar", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        String dni = view2.tblTeacher.getValueAt(selectedRow, 2).toString();
+        conecction.deleteDocumet(new Document("Cedula", dni));
+        JOptionPane.showMessageDialog(null, "Docente eliminado con éxito", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+        loadDataT();
+    }
+
+    /**
+     * Busca un docente por su cédula y muestra los resultados en la tabla.
+     */
+    public void searchDataT() {
+        String dni = JOptionPane.showInputDialog(view2, "Ingrese la cédula del docente que desea buscar");
+        if (dni == null || dni.isEmpty()) {
+            JOptionPane.showMessageDialog(view2, "Cédula no válida", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        conecction.setNameCollection("Docentes");
+        List<Document> results = conecction.readDocument(new Document("Cedula", dni));
+
+        DefaultTableModel model = (DefaultTableModel) view2.tblTeacher.getModel();
+        model.setRowCount(0);
+
+        if (!results.isEmpty()) {
+            for (Document doc : results) {
+                model.addRow(new Object[]{
+                    doc.getString("Nombre"),
+                    doc.getString("Apellido"),
+                    doc.getString("Cedula"),
+                    doc.getString("Formato"),
+                    doc.getInteger("Horas", 0),
+                    doc.getString("Pago Total")
+                });
+            }
+        } else {
+            JOptionPane.showMessageDialog(null, "Docente no existente", "Búsqueda", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    /**
+     * Maneja los eventos de los botones en la vista.
+     */
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == view2.btnSaveD) {
+            saveDataT();
+        } else if (e.getSource() == view2.btnUpdateD) {
+            isEdit = true;
+        } else if (e.getSource() == view2.btnDeleteD) {
+            deleteDataT();
+        } else if (e.getSource() == view2.btnSearchD) {
+            searchDataT();
+        }
+    }
