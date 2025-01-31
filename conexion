@@ -1,0 +1,74 @@
+package ModeloApellido;
+
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.MongoException;
+import com.mongodb.client.MongoDatabase;
+import java.util.ArrayList;
+import org.bson.Document;
+import com.mongodb.client.MongoCollection;
+import java.util.List;
+
+public class Mongo {
+
+    private String nameDatabase = "asd";
+    private String nameCollection = "asd";
+    private MongoDatabase mongoDatabase = null;
+    private MongoClient mongoClient = null;
+    MongoCollection<Document> mongoCollection;
+
+    public MongoDatabase createConecction() {
+        try {
+            mongoClient = MongoClients.create("ur");
+            mongoDatabase = mongoClient.getDatabase(nameDatabase);
+        } catch (MongoException e) {
+            e.printStackTrace();
+        }
+        return mongoDatabase;
+    }
+
+    public boolean crear(Document document) {
+        try {
+            mongoDatabase = createConecction();
+            if (mongoDatabase != null) {
+                MongoCollection<Document> colecction = mongoDatabase.getCollection(nameDatabase);
+                colecction.insertOne(document);
+            }
+        } catch (MongoException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public List<Document> leer(Document document) {
+        ArrayList<Document> resultados = new ArrayList<>();
+        try {
+            MongoCollection<Document> collection = mongoDatabase.getCollection(nameDatabase);
+            collection.find(document).into(resultados);
+        } catch (MongoException e) {
+            e.printStackTrace();
+        }
+        return resultados;
+    }
+
+    public boolean actualizar(Document document, Document newDocument) {
+        try {
+            MongoCollection<Document> collection = mongoDatabase.getCollection(nameDatabase);
+            collection.updateOne(document, new Document("$set", newDocument));
+        } catch (MongoException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean eliminar(Document document) {
+        try {
+            MongoCollection<Document> collection = mongoDatabase.getCollection(nameDatabase);
+            collection.deleteOne(document);
+        } catch (MongoException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+}
